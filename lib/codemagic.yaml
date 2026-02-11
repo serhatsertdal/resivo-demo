@@ -1,0 +1,20 @@
+workflows:
+  ios-workflow:
+    name: RESIVO iOS (Auto Scaffold)
+    max_build_duration: 60
+    environment:
+      flutter: stable
+    scripts:
+      - name: Create iOS project structure if missing
+        script: |
+          if [ ! -d "ios" ]; then
+            echo "ios/ missing -> generating Flutter scaffold..."
+            flutter create . --platforms=ios --org com.resivo
+            echo "Scaffold generated."
+          fi
+      - name: Get packages
+        script: flutter pub get
+      - name: Build iOS IPA
+        script: flutter build ipa --release
+    artifacts:
+      - build/ios/ipa/*.ipa
