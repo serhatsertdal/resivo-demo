@@ -1,0 +1,15 @@
+name: resivo
+description: Resivo iOS Demo (MVP)
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.2.3
+
+flutter:
+  uses-material-design: true
