@@ -11,85 +11,149 @@ class ResivoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Resivo',
       debugShowCheckedModeBanner: false,
-      title: 'RESIVO',
-      theme: ThemeData.dark(),
-      home: const HomePage(),
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        useMaterial3: true,
+      ),
+      home: const HomeScreen(),
     );
   }
 }
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomeScreenState extends State<HomeScreen> {
   int streak = 0;
-  int best = 0;
+  bool doneToday = false;
+
+  static const _kStreak = 'streak';
+  static const _kLastDoneDay = 'last_done_day'; // yyyy-mm-dd
 
   @override
   void initState() {
     super.initState();
-    load();
+    _load();
   }
 
-  Future<void> load() async {
-    final p = await SharedPreferences.getInstance();
+  String _todayKey() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final last = prefs.getString(_kLastDoneDay);
+    final s = prefs.getInt(_kStreak) ?? 0;
+
     setState(() {
-      streak = p.getInt("streak") ?? 0;
-      best = p.getInt("best") ?? 0;
+      streak = s;
+      doneToday = (last == _todayKey());
     });
   }
 
-  Future<void> complete() async {
-    final p = await SharedPreferences.getInstance();
-    streak++;
-    if (streak > best) best = streak;
-    await p.setInt("streak", streak);
-    await p.setInt("best", best);
-    setState(() {});
-  }
+  Future<void> _completeToday() async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = _todayKey();
+    final last = prefs.getString(_kLastDoneDay);
 
-  Future<void> reset() async {
-    final p = await SharedPreferences.getInstance();
-    await p.clear();
+    int newStreak = prefs.getInt(_kStreak) ?? 0;
+
+    // Basit streak mantığı:
+    // Eğer bugün zaten tamamlandıysa değişme.
+    if (last == today) return;
+
+    // Eğer dün tamamlandıysa +1, değilse 1’e reset.
+    final now = DateTime.now();
+    final yesterday = now.subtract(const Duration(days: 1));
+    final yKey =
+        '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+
+    if (last == yKey) {
+      newStreak += 1;
+    } else {
+      newStreak = 1;
+    }
+
+    await prefs.setInt(_kStreak, newStreak);
+    await prefs.setString(_kLastDoneDay, today);
+
     setState(() {
-      streak = 0;
-      best = 0;
+      streak = newStreak;
+      doneToday = true;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    const motto = "Start with one day. Today.";
+
     return Scaffold(
-      backgroundColor: Colors.black,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text("RESIVO",
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              const Text("There is only one day to start: Today.",
-                  style: TextStyle(color: Colors.white70)),
-              const SizedBox(height: 40),
-              Text("Streak: $streak", style: const TextStyle(fontSize: 22)),
-              Text("Best: $best", style: const TextStyle(color: Colors.white70)),
-              const SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: complete,
-                child: const Text("Complete Today"),
-              ),
               const SizedBox(height: 10),
-              TextButton(
-                onPressed: reset,
-                child: const Text("Reset"),
-              )
+              const Text(
+                "RESIVO",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  letterSpacing: 6,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      motto,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      "Streak: $streak day(s)",
+                      style: const TextStyle(fontSize: 16, color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              ElevatedButton(
+                onPressed: doneToday ? null : _completeToday,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: Text(doneToday ? "Completed Today ✅" : "I’m in. Today ✅"),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                "Not depression-focused. For people who are tired of procrastinating and want to win.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white.withOpacity(0.6)),
+              ),
+              const Spacer(),
+              Text(
+                "Built with you. Resivo.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+              ),
             ],
           ),
         ),
